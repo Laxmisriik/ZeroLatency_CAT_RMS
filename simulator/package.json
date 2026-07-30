@@ -1,0 +1,12 @@
+{
+  "name": "cat-rms-simulator",
+  "version": "1.0.0",
+  "description": "IoT Edge Simulator — generates realistic machine telemetry over MQTT",
+  "main": "simulator.js",
+  "scripts": {
+    "start": "node simulator.js"
+  },
+  "dependencies": {
+    "mqtt": "^5.10.0"
+  }
+}

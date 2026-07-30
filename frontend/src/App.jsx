@@ -1,7 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import './index.css';
+import { apiFetch } from './api.js';
+import FleetMap from './components/FleetMap.jsx';
+import OperatorPortal from './components/OperatorPortal.jsx';
+import PacingPanel from './components/PacingPanel.jsx';
+import FleetCharts from './components/FleetCharts.jsx';
+import LoginPage from './components/LoginPage.jsx';
+import CreateEquipmentModal from './components/CreateEquipmentModal.jsx';
+import ManagerCheckInModal from './components/ManagerCheckInModal.jsx';
+import QrCodeModal from './components/QrCodeModal.jsx';
 
-const API_BASE = 'http://localhost:5000/api';
 const POLL_INTERVAL = 3000;
 
 /* ── Utility Helpers ──────────────────────────────────────────── */
@@ -45,7 +53,7 @@ function KpiCard({ icon, label, value, sub, variant }) {
 }
 
 /* ── Checkout Modal ──────────────────────────────────────────── */
-function CheckoutModal({ equipment, onClose, onCheckout }) {
+function CheckoutModal({ equipment, token, onClose, onCheckout }) {
   const available = equipment.filter(e => e.status === 'AVAILABLE');
   const [form, setForm] = useState({ equipmentId: '', siteId: '', operatorId: '', checkOutDate: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -54,20 +62,11 @@ function CheckoutModal({ equipment, onClose, onCheckout }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        onCheckout(data);
-        onClose();
-      } else {
-        alert(data.error || 'Checkout failed');
-      }
+      const data = await apiFetch('/checkout', { method: 'POST', token, body: form });
+      onCheckout(data);
+      onClose();
     } catch (err) {
-      alert('Network error: ' + err.message);
+      alert(err.message || 'Checkout failed');
     } finally {
       setSubmitting(false);
     }
@@ -119,14 +118,40 @@ function CheckoutModal({ equipment, onClose, onCheckout }) {
 
 /* ── Main App ────────────────────────────────────────────────── */
 export default function App() {
+  const [token, setToken] = useState(() => localStorage.getItem('zlrms_token') || null);
+  const [user, setUser] = useState(() => {
+    const raw = localStorage.getItem('zlrms_user');
+    return raw ? JSON.parse(raw) : null;
+  });
+
   const [equipment, setEquipment] = useState([]);
   const [stats, setStats] = useState(null);
   const [anomalies, setAnomalies] = useState([]);
   const [forecast, setForecast] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [pacing, setPacing] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showCreateEquipment, setShowCreateEquipment] = useState(false);
+  const [showManagerCheckIn, setShowManagerCheckIn] = useState(false);
+  const [viewingQrFor, setViewingQrFor] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  function handleLogin(newToken, newUser) {
+    localStorage.setItem('zlrms_token', newToken);
+    localStorage.setItem('zlrms_user', JSON.stringify(newUser));
+    setToken(newToken);
+    setUser(newUser);
+    setLoading(true);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('zlrms_token');
+    localStorage.removeItem('zlrms_user');
+    setToken(null);
+    setUser(null);
+  }
 
   // Clock ticker
   useEffect(() => {
@@ -136,37 +161,43 @@ export default function App() {
 
   // Data fetcher
   const fetchData = useCallback(async () => {
+    if (!token) return;
     try {
-      const [eqRes, statsRes, anomRes, forecastRes] = await Promise.all([
-        fetch(`${API_BASE}/equipment`),
-        fetch(`${API_BASE}/equipment/stats`),
-        fetch(`${API_BASE}/anomalies`),
-        fetch(`${API_BASE}/forecast`),
-      ]);
-
-      if (!eqRes.ok || !statsRes.ok || !anomRes.ok) throw new Error('API error');
-
-      const [eqData, statsData, anomData, forecastData] = await Promise.all([
-        eqRes.json(), statsRes.json(), anomRes.json(), forecastRes.ok ? forecastRes.json() : []
+      const [eqData, statsData, anomData, sitesData, pacingData, forecastData] = await Promise.all([
+        apiFetch('/equipment', { token }),
+        apiFetch('/equipment/stats', { token }),
+        apiFetch('/anomalies', { token }),
+        apiFetch('/sites', { token }),
+        apiFetch('/pacing', { token }),
+        user?.role === 'DEALER' ? apiFetch('/forecast', { token }) : Promise.resolve([]),
       ]);
 
       setEquipment(eqData);
       setStats(statsData);
       setAnomalies(anomData);
       setForecast(forecastData);
+      setSites(sitesData);
+      setPacing(pacingData);
       setError(null);
       setLoading(false);
     } catch (err) {
+      if (err.sessionExpired) { handleLogout(); return; }
       setError(err.message);
       setLoading(false);
     }
-  }, []);
+  }, [token, user]);
 
   useEffect(() => {
+    if (!token) { setLoading(false); return; }
     fetchData();
     const interval = setInterval(fetchData, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [token, fetchData]);
+
+  // ── Auth Gate ──
+  if (!token || !user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   // ── Loading / Error States ──
   if (loading) {
@@ -192,6 +223,11 @@ export default function App() {
   const s = stats || {};
   const unresolvedAnomalies = anomalies.filter(a => !a.resolved);
 
+  // Backend already scopes equipment/anomalies/pacing to a Manager's assigned machines.
+  const visibleEquipment = equipment;
+  const visibleAnomalies = unresolvedAnomalies;
+  const visiblePacing = pacing;
+
   return (
     <div className="app-container">
       {/* ── Header ── */}
@@ -201,17 +237,39 @@ export default function App() {
           <h1>Zero<span>Latency</span> RMS</h1>
         </div>
         <div className="header-right">
+          <div className="user-badge">
+            <span className="user-badge-role">{user.role}</span>
+            <span className="user-badge-name">{user.displayName}</span>
+          </div>
           <div className="live-badge">Live Telemetry</div>
           <div className="header-time">
             {currentTime.toLocaleTimeString('en-US', { hour12: false })}
           </div>
-          <button className="btn btn-primary btn-sm" onClick={() => setShowCheckout(true)}>
-            + Checkout
-          </button>
+          {user.role === 'DEALER' && (
+            <>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowCreateEquipment(true)}>
+                🏗️ Add Equipment
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowCheckout(true)}>
+                + Checkout
+              </button>
+            </>
+          )}
+          {user.role === 'MANAGER' && (
+            <button className="btn btn-primary btn-sm" onClick={() => setShowManagerCheckIn(true)}>
+              📦 Check In Machine
+            </button>
+          )}
+          <button className="btn btn-secondary btn-sm" onClick={handleLogout}>Logout</button>
         </div>
       </header>
 
-      {/* ── Main Content ── */}
+      {/* ── Operator Mobile Portal (standalone view) ── */}
+      {user.role === 'OPERATOR' ? (
+        <main className="main-content">
+          <OperatorPortal equipment={equipment} token={token} user={user} onUnlocked={fetchData} />
+        </main>
+      ) : (
       <main className="main-content">
         {/* ── KPI Row ── */}
         <div className="kpi-row">
@@ -225,9 +283,15 @@ export default function App() {
             sub={`${formatHours(s.total_engine_hours)}h total`} variant="kpi-running" />
           <KpiCard icon="⏸️" label="Idle" value={s.engine_idle || 0}
             sub={`${formatHours(s.total_idle_hours)}h total idle`} variant="kpi-idle" />
-          <KpiCard icon="🚨" label="Action Required" value={Number(s.unauthorized || 0) + unresolvedAnomalies.length}
+          <KpiCard icon="🚨" label="Action Required" value={Number(s.unauthorized || 0) + visibleAnomalies.length}
             sub={`${s.unauthorized || 0} unauthorized`} variant="kpi-alert" />
         </div>
+
+        {/* ── Fleet Activity Charts (Dealer & Manager) ── */}
+        <FleetCharts equipment={visibleEquipment} />
+
+        {/* ── Live Fleet Map ── */}
+        <FleetMap equipment={visibleEquipment} sites={sites} anomalies={visibleAnomalies} />
 
         {/* ── Content Grid: Fleet Table + Alerts ── */}
         <div className="content-grid">
@@ -256,7 +320,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {equipment.map(eq => {
+                  {visibleEquipment.map(eq => {
                     const t = eq.telemetry || {};
                     const fuel = Number(t.fuelLevelPct || 0);
                     const isAlert = eq.status === 'UNAUTHORIZED_USE';
@@ -306,24 +370,30 @@ export default function App() {
                             : <span className="meta-tag empty">—</span>}
                         </td>
                         <td>
-                          {eq.status === 'AVAILABLE' && (
+                          {eq.status === 'AVAILABLE' && user.role === 'DEALER' && (
                             <button className="btn btn-primary btn-sm"
                               onClick={() => setShowCheckout(true)}>
                               Checkout
                             </button>
                           )}
-                          {(eq.status === 'RENTED' || eq.status === 'UNAUTHORIZED_USE') && (
+                          {(eq.status === 'RENTED' || eq.status === 'UNAUTHORIZED_USE') && user.role === 'DEALER' && (
                             <button className="btn btn-danger btn-sm"
                               onClick={async () => {
                                 if (!confirm(`Return ${eq.equipment_id}?`)) return;
-                                await fetch(`${API_BASE}/checkin`, {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ equipmentId: eq.equipment_id }),
-                                });
-                                fetchData();
+                                try {
+                                  await apiFetch('/checkin', { method: 'POST', token, body: { equipmentId: eq.equipment_id } });
+                                  fetchData();
+                                } catch (err) {
+                                  alert(err.message || 'Return failed.');
+                                }
                               }}>
                               Return
+                            </button>
+                          )}
+                          {user.role === 'DEALER' && (
+                            <button className="btn btn-secondary btn-sm" style={{ marginLeft: '6px' }}
+                              onClick={() => setViewingQrFor(eq.equipment_id)}>
+                              QR
                             </button>
                           )}
                         </td>
@@ -338,16 +408,16 @@ export default function App() {
           {/* ── Alerts Panel ── */}
           <div className="alerts-panel">
             <div className="section-header">
-              <h2>🚨 Live Anomalies ({unresolvedAnomalies.length})</h2>
+              <h2>🚨 Live Anomalies ({visibleAnomalies.length})</h2>
             </div>
             <div className="alerts-list">
-              {unresolvedAnomalies.length === 0 ? (
+              {visibleAnomalies.length === 0 ? (
                 <div className="alerts-empty">
                   <div style={{ fontSize: '32px', marginBottom: '8px' }}>✅</div>
                   All systems operational
                 </div>
               ) : (
-                unresolvedAnomalies.slice(0, 20).map(a => (
+                visibleAnomalies.slice(0, 20).map(a => (
                   <div key={a.id}
                     className={`alert-item severity-${(a.severity || 'high').toLowerCase()}`}>
                     <div className="alert-header">
@@ -365,7 +435,11 @@ export default function App() {
           </div>
         </div>
 
-        {/* ── Demand Forecast Panel ── */}
+        {/* ── Contract Pacing & Predictive Overrun ── */}
+        <PacingPanel pacing={visiblePacing} token={token} onExtended={fetchData} />
+
+        {/* ── Demand Forecast Panel (Dealer only) ── */}
+        {user.role === 'DEALER' && (
         <div className="fleet-panel" style={{ marginTop: '24px' }}>
           <div className="section-header" style={{ padding: '16px 20px 0' }}>
             <h2>📊 Predictive Demand Forecast (Next 30 Days)</h2>
@@ -414,14 +488,45 @@ export default function App() {
             </table>
           </div>
         </div>
+        )}
       </main>
+      )}
 
       {/* ── Checkout Modal ── */}
       {showCheckout && (
         <CheckoutModal
           equipment={equipment}
+          token={token}
           onClose={() => setShowCheckout(false)}
           onCheckout={() => fetchData()}
+        />
+      )}
+
+      {/* ── Dealer: Register New Equipment + QR ── */}
+      {showCreateEquipment && (
+        <CreateEquipmentModal
+          token={token}
+          onClose={() => setShowCreateEquipment(false)}
+          onCreated={() => fetchData()}
+        />
+      )}
+
+      {/* ── Manager: Check In New Machine (QR scan) ── */}
+      {showManagerCheckIn && (
+        <ManagerCheckInModal
+          token={token}
+          sites={sites}
+          onClose={() => setShowManagerCheckIn(false)}
+          onCheckedIn={() => fetchData()}
+        />
+      )}
+
+      {/* ── View / Download QR for an existing machine ── */}
+      {viewingQrFor && (
+        <QrCodeModal
+          equipmentId={viewingQrFor}
+          token={token}
+          onClose={() => setViewingQrFor(null)}
         />
       )}
     </div>

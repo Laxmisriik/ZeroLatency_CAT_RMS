@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { apiFetch } from '../api.js';
 import QrScanner from './QrScanner.jsx';
+import { PackageCheck, AlertCircle, Check } from 'lucide-react';
 
 export default function ManagerCheckInModal({ token, sites, onClose, onCheckedIn }) {
   const [equipmentId, setEquipmentId] = useState('');
@@ -34,7 +35,7 @@ export default function ManagerCheckInModal({ token, sites, onClose, onCheckedIn
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <h3>📦 Check In New Machine</h3>
+        <h3><PackageCheck size={18} /> Check In New Machine</h3>
         <p className="modal-sub">Scan the QR label delivered with the machine, then confirm the site &amp; contract window</p>
 
         <QrScanner
@@ -68,11 +69,11 @@ export default function ManagerCheckInModal({ token, sites, onClose, onCheckedIn
             <input type="number" step="0.5" min="1" max="24" value={dailyShiftHours}
               onChange={e => setDailyShiftHours(e.target.value)} required />
           </div>
-          {error && <div className="operator-status status-error">{error}</div>}
+          {error && <div className="operator-status status-error"><AlertCircle size={13} /> {error}</div>}
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary btn-full" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary btn-full" disabled={submitting}>
-              {submitting ? 'Checking in...' : '✅ Confirm Check-In'}
+              <Check size={15} /> {submitting ? 'Checking in...' : 'Confirm Check-In'}
             </button>
           </div>
         </form>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api.js';
+import { QrCode, AlertCircle, Download } from 'lucide-react';
 
 export default function QrCodeModal({ equipmentId, token, onClose }) {
   const [qrUrl, setQrUrl] = useState(null);
@@ -31,13 +32,15 @@ export default function QrCodeModal({ equipmentId, token, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <h3>📎 QR Label — {equipmentId}</h3>
+        <h3><QrCode size={18} /> QR Label — {equipmentId}</h3>
         <p className="modal-sub">Attach this to the physical machine before delivery</p>
-        {error && <div className="operator-status status-error">{error}</div>}
+        {error && <div className="operator-status status-error"><AlertCircle size={13} /> {error}</div>}
         {qrUrl && <img src={qrUrl} alt={`${equipmentId} QR code`} className="qr-image" />}
         <div className="modal-actions">
           <button className="btn btn-secondary btn-full" onClick={onClose}>Close</button>
-          <button className="btn btn-primary btn-full" onClick={download} disabled={!qrUrl}>⬇️ Download</button>
+          <button className="btn btn-primary btn-full" onClick={download} disabled={!qrUrl}>
+            <Download size={15} /> Download
+          </button>
         </div>
       </div>
     </div>

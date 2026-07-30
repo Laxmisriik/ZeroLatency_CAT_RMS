@@ -1,18 +1,19 @@
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Map as MapIcon, TriangleAlert } from 'lucide-react';
 
 /* ── Marker color per machine state ─────────────────────────────
-   Green = Operating (engine running)   Yellow = Idle
+   Green = Operating (engine running)   Amber = Idle
    Blue  = Checked-in / Reserved        Red    = Anomaly / Unauthorized
-   Gray  = Available                    Purple = Maintenance             */
+   Gray  = Available                    Violet = Maintenance             */
 function markerColor(eq) {
   const engine = (eq.telemetry?.engineStatus || 'OFF').toUpperCase();
-  if (eq.status === 'UNAUTHORIZED_USE') return '#E53935';
-  if (eq.status === 'UNDER_MAINTENANCE') return '#9C27B0';
-  if (eq.status === 'RENTED' && engine === 'RUNNING') return '#4CAF50';
-  if (eq.status === 'RENTED' && engine === 'IDLE') return '#FF9800';
-  if (eq.status === 'RESERVED') return '#2196F3';
-  return '#9E9E9E'; // AVAILABLE / OFF
+  if (eq.status === 'UNAUTHORIZED_USE') return '#C5221F';
+  if (eq.status === 'UNDER_MAINTENANCE') return '#6B4FBB';
+  if (eq.status === 'RENTED' && engine === 'RUNNING') return '#1E7B34';
+  if (eq.status === 'RENTED' && engine === 'IDLE') return '#B25E00';
+  if (eq.status === 'RESERVED') return '#1A56DB';
+  return '#8A8F98'; // AVAILABLE / OFF
 }
 
 export default function FleetMap({ equipment, sites, anomalies }) {
@@ -29,11 +30,9 @@ export default function FleetMap({ equipment, sites, anomalies }) {
 
   return (
     <div className="map-panel">
-      <div className="section-header" style={{ padding: '16px 20px 0' }}>
-        <h2>🗺️ Live Fleet Map</h2>
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          {withGps.length} asset(s) with live GPS
-        </span>
+      <div className="section-header" style={{ padding: '18px 20px 0' }}>
+        <h2><MapIcon size={16} /> Live Fleet Map</h2>
+        <span className="section-header-meta">{withGps.length} asset(s) with live GPS</span>
       </div>
       <div className="map-container">
         <MapContainer center={center} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
@@ -47,7 +46,7 @@ export default function FleetMap({ equipment, sites, anomalies }) {
               key={site.site_id}
               center={[Number(site.center_latitude), Number(site.center_longitude)]}
               radius={Number(site.geofence_radius_meters)}
-              pathOptions={{ color: '#FFC20E', fillColor: '#FFC20E', fillOpacity: 0.06, weight: 1.5, dashArray: '4 4' }}
+              pathOptions={{ color: '#DDAF00', fillColor: '#FFCD11', fillOpacity: 0.08, weight: 1.5, dashArray: '4 4' }}
             >
               <Popup>
                 <strong>{site.name}</strong><br />
@@ -77,7 +76,9 @@ export default function FleetMap({ equipment, sites, anomalies }) {
                   Fuel: {Number(eq.telemetry?.fuelLevelPct || 0).toFixed(1)}%<br />
                   Site: {eq.current_site_id || '—'} | Operator: {eq.current_operator_id || '—'}
                   {flags.length > 0 && (
-                    <><br /><span style={{ color: '#E53935', fontWeight: 700 }}>⚠ {flags.join(', ')}</span></>
+                    <><br /><span style={{ color: '#C5221F', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <TriangleAlert size={12} /> {flags.join(', ')}
+                    </span></>
                   )}
                 </Popup>
               </CircleMarker>

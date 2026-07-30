@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { apiFetch } from '../api.js';
 import QrCodeModal from './QrCodeModal.jsx';
+import { HardHat, AlertCircle } from 'lucide-react';
 
 const EQUIPMENT_TYPES = ['Excavator', 'Bulldozer', 'Crane', 'Grader', 'Loader'];
 
@@ -32,7 +33,7 @@ export default function CreateEquipmentModal({ token, onClose, onCreated }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <h3>🏗️ Register New Equipment</h3>
+        <h3><HardHat size={18} /> Register New Equipment</h3>
         <p className="modal-sub">Create a machine record, then download its QR label for delivery</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -46,7 +47,7 @@ export default function CreateEquipmentModal({ token, onClose, onCreated }) {
               {EQUIPMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
-          {error && <div className="operator-status status-error">{error}</div>}
+          {error && <div className="operator-status status-error"><AlertCircle size={13} /> {error}</div>}
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary btn-full" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary btn-full" disabled={submitting}>

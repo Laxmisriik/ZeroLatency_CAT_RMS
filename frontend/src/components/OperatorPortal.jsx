@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../api.js';
 import QrScanner from './QrScanner.jsx';
+import {
+  Smartphone, LocateFixed, CheckCircle2, XCircle, Lock, Unlock, AlertCircle,
+} from 'lucide-react';
 
 /* Small offset generators for demo GPS simulation (~meters → degrees) */
 function offsetCoords(lat, lng, meters) {
@@ -13,7 +16,9 @@ function StepRow({ label, step }) {
   if (!step) return null;
   return (
     <div className={`verify-step ${step.passed ? 'step-pass' : 'step-fail'}`}>
-      <span className="verify-step-icon">{step.passed ? '✅' : '❌'}</span>
+      <span className={`verify-step-icon ${step.passed ? 'step-pass' : 'step-fail'}`}>
+        {step.passed ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+      </span>
       <div>
         <div className="verify-step-label">{label}</div>
         <div className="verify-step-detail">
@@ -96,9 +101,9 @@ export default function OperatorPortal({ equipment, token, user, onUnlocked }) {
 
   return (
     <div className="operator-portal">
-      <div className="section-header" style={{ padding: '16px 20px 0' }}>
-        <h2>📱 Operator Mobile Portal</h2>
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Logged in as {user.displayName}</span>
+      <div className="section-header" style={{ padding: '18px 20px 0' }}>
+        <h2><Smartphone size={16} /> Operator Mobile Portal</h2>
+        <span className="section-header-meta">Logged in as {user.displayName}</span>
       </div>
 
       <div className="operator-body">
@@ -116,25 +121,26 @@ export default function OperatorPortal({ equipment, token, user, onUnlocked }) {
 
         <div className="operator-actions">
           <button className="btn btn-secondary btn-full" disabled={loading} onClick={handleRealGps}>
-            📍 Use My Real GPS
+            <LocateFixed size={16} /> Use My Real GPS
           </button>
           <button className="btn btn-primary btn-full" disabled={loading} onClick={() => handleSimulate(true)}>
-            ✅ Simulate Near Machine
+            <CheckCircle2 size={16} /> Simulate Near Machine
           </button>
           <button className="btn btn-danger btn-full" disabled={loading} onClick={() => handleSimulate(false)}>
-            ❌ Simulate Far Away
+            <XCircle size={16} /> Simulate Far Away
           </button>
         </div>
 
         {loading && <div className="operator-status">Verifying proximity &amp; geofence…</div>}
-        {error && <div className="operator-status status-error">{error}</div>}
+        {error && <div className="operator-status status-error"><AlertCircle size={13} /> {error}</div>}
 
         {result && (
           <div className={`verify-panel ${unlocked ? 'verify-unlocked' : 'verify-locked'}`}>
             <StepRow label="Operator ↔ Machine Proximity" step={result.steps?.proximityCheck} />
             <StepRow label="Machine ↔ Site Geofence" step={result.steps?.geofenceCheck} />
             <div className={`ignition-banner ${unlocked ? 'ignition-on' : 'ignition-off'}`}>
-              {unlocked ? '🟢 IGNITION UNLOCKED' : '🔒 IGNITION LOCKED'}
+              {unlocked ? <Unlock size={16} /> : <Lock size={16} />}
+              {unlocked ? 'IGNITION UNLOCKED' : 'IGNITION LOCKED'}
             </div>
             {unlocked && (
               <div className="shift-timer">

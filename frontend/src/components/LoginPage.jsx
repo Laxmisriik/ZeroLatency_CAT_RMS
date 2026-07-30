@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { apiFetch } from '../api.js';
+import { Triangle, LogIn, AlertCircle } from 'lucide-react';
 
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -25,7 +26,7 @@ export default function LoginPage({ onLogin }) {
     <div className="login-screen">
       <div className="login-card">
         <div className="login-brand">
-          <div className="logo-icon">▲</div>
+          <div className="logo-icon"><Triangle size={20} fill="currentColor" strokeWidth={0} /></div>
           <h1>Zero<span>Latency</span> RMS</h1>
         </div>
         <p className="login-sub">Sign in to your fleet workspace</p>
@@ -41,9 +42,9 @@ export default function LoginPage({ onLogin }) {
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               placeholder="••••••••" required />
           </div>
-          {error && <div className="operator-status status-error">{error}</div>}
+          {error && <div className="operator-status status-error"><AlertCircle size={13} /> {error}</div>}
           <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-            {loading ? 'Signing in...' : '🔐 Sign In'}
+            <LogIn size={15} /> {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 

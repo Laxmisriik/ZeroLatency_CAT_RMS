@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import jsQR from 'jsqr';
+import { Camera, ImageUp } from 'lucide-react';
 
 /**
  * Reusable QR scanner supporting both a live camera feed and a static
@@ -96,7 +97,7 @@ export default function QrScanner({ onScan, onError }) {
       <div className="qr-scanner-actions">
         {!scanning ? (
           <button type="button" className="btn btn-secondary btn-full" onClick={startCamera}>
-            📷 Scan with Camera
+            <Camera size={15} /> Scan with Camera
           </button>
         ) : (
           <button type="button" className="btn btn-danger btn-full" onClick={stopCamera}>
@@ -104,7 +105,7 @@ export default function QrScanner({ onScan, onError }) {
           </button>
         )}
         <label className="btn btn-secondary btn-full qr-upload-label">
-          🖼️ Upload QR Image
+          <ImageUp size={15} /> Upload QR Image
           <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
         </label>
       </div>

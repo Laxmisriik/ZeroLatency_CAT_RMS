@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { apiFetch } from '../api.js';
+import { TrendingUp } from 'lucide-react';
 
 function pacingBarClass(status) {
   if (status === 'LAGGING') return 'fuel-low';
@@ -28,11 +29,9 @@ export default function PacingPanel({ pacing, token, onExtended }) {
 
   return (
     <div className="fleet-panel" style={{ marginTop: '24px' }}>
-      <div className="section-header" style={{ padding: '16px 20px 0' }}>
-        <h2>📈 Contract Pacing &amp; Predictive Overrun</h2>
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          Pacing % = Logged Hours ÷ Expected Hours
-        </span>
+      <div className="section-header" style={{ padding: '18px 20px 0' }}>
+        <h2><TrendingUp size={16} /> Contract Pacing &amp; Predictive Overrun</h2>
+        <span className="section-header-meta">Pacing % = Logged Hours ÷ Expected Hours</span>
       </div>
       <div style={{ overflowX: 'auto', padding: '16px 20px' }}>
         <table className="fleet-table" style={{ border: '1px solid var(--border-subtle)' }}>
